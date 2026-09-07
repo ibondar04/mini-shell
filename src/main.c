@@ -38,12 +38,24 @@ int main(void)
             continue;
         }
 
+        char **pipe_args = NULL;
+
+        for (int j = 0; j < i; j++)
+        {
+            if (strcmp(args[j], "|") == 0)
+            {
+                args[j] = NULL;
+                pipe_args = &args[j + 1];
+                break;
+            }
+        }
+
         char *output_file = NULL;
         char *input_file = NULL;
 
         int redirection_error = 0;
 
-        for (int j = 0; j < i; j++)
+        for (int j = 0; j < i && args[j] != NULL; j++)
         {
             if (strcmp(args[j], ">") == 0)
             {
@@ -94,6 +106,52 @@ int main(void)
             {
                 perror("cd");
             }
+
+            continue;
+        }
+
+        int pipefd[2];
+
+        if (pipe_args != NULL)
+        {
+            if (pipe(pipefd) == -1)
+            {
+                perror("pipe");
+                continue;
+            }
+        }
+
+        if (pipe_args != NULL)
+        {
+            pid_t left_pid = fork();
+
+            if (left_pid == 0)
+            {
+                dup2(pipefd[1], STDOUT_FILENO);
+                
+                close(pipefd[0]);
+                close(pipefd[1]);
+
+                execvp(args[0], args);
+            }
+
+            pid_t right_pid = fork();
+
+            if (right_pid == 0)
+            {
+                dup2(pipefd[0], STDIN_FILENO);
+
+                close(pipefd[0]);
+                close(pipefd[1]);
+
+                execvp(pipe_args[0], pipe_args);
+            }
+
+            close(pipefd[0]);
+            close(pipefd[1]);
+
+            wait(NULL);
+            wait(NULL);
 
             continue;
         }
