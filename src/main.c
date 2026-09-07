@@ -10,6 +10,10 @@ int main(void)
 
     while (1)
     {
+        while (waitpid(-1, NULL, WNOHANG) > 0)
+        {
+        }
+
         printf("myshell>\n");
         if (fgets(input, sizeof(input), stdin) == NULL)
         {
@@ -38,9 +42,22 @@ int main(void)
             continue;
         }
 
+        int background = 0;
+
+        if (i > 0 && strcmp(args[i - 1], "&") == 0)
+        {
+            background = 1;
+            args[i - 1] = NULL;
+        }
+
+        if (background)
+        {
+            printf("Background command detected\n");
+        }
+
         char **pipe_args = NULL;
 
-        for (int j = 0; j < i; j++)
+        for (int j = 0; j < i && args[j] != NULL; j++)
         {
             if (strcmp(args[j], "|") == 0)
             {
@@ -244,10 +261,14 @@ int main(void)
         }
         else
         {
-            if (wait(NULL) == -1)
+            if (!background)
             {
-                perror("wait");
+                if (wait(NULL) == -1)
+                {
+                    perror("wait");
+                }
             }
+            
         }
     }
     
