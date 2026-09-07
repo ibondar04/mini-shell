@@ -125,26 +125,61 @@ int main(void)
         {
             pid_t left_pid = fork();
 
+            if (left_pid < 0)
+            {
+                perror("fork");
+                close(pipefd[0]);
+                close(pipefd[1]);
+                continue;
+            }
+
             if (left_pid == 0)
             {
-                dup2(pipefd[1], STDOUT_FILENO);
+                if (dup2(pipefd[1], STDOUT_FILENO) == -1)
+                {
+                    perror("dup2");
+                    close(pipefd[0]);
+                    close(pipefd[1]);
+                    return 1;
+                }
                 
                 close(pipefd[0]);
                 close(pipefd[1]);
 
                 execvp(args[0], args);
+
+                perror("execvp");
+                return 1;
             }
 
             pid_t right_pid = fork();
 
+            if (right_pid < 0)
+            {
+                perror("fork");
+                close(pipefd[0]);
+                close(pipefd[1]);
+                wait(NULL);
+                continue;
+            }
+
             if (right_pid == 0)
             {
-                dup2(pipefd[0], STDIN_FILENO);
+                if (dup2(pipefd[0], STDIN_FILENO) == -1)
+                {
+                    perror("dup2");
+                    close(pipefd[0]);
+                    close(pipefd[1]);
+                    return 1;
+                }
 
                 close(pipefd[0]);
                 close(pipefd[1]);
 
                 execvp(pipe_args[0], pipe_args);
+
+                perror("execvp");
+                return 1;
             }
 
             close(pipefd[0]);
