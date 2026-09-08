@@ -27,34 +27,40 @@ int parse_input(char *input, char *args[])
 
 int parse_redirection(char *args[], int arg_count, char **input_file, char **output_file)
 {
+    int write_index = 0;
+
     for (int j = 0; j < arg_count && args[j] != NULL; j++)
     {
         if (strcmp(args[j], ">") == 0)
         {
-            if (args[j + 1] == NULL)
+            if (j + 1 >= arg_count || args[j + 1] == NULL)
             {
                 printf("myshell: missing output file\n");
                 return -1;
             }
 
             *output_file = args[j + 1];
-            args[j] = NULL;
-            break;
+            j++;
         }
-
-        if (strcmp(args[j], "<") == 0)
+        else if (strcmp(args[j], "<") == 0)
         {
-            if (args[j + 1] == NULL)
+            if (j + 1 >= arg_count || args[j + 1] == NULL)
             {
                 printf("myshell: missing input file\n");
                 return -1;
             }
 
             *input_file = args[j + 1];
-            args[j] = NULL;
-            break;
+            j++;
+        }
+        else
+        {
+            args[write_index] = args[j];
+            write_index++;
         }
     }
+
+    args[write_index] = NULL;
 
     return 0;
 }
