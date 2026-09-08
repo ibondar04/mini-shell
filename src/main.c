@@ -3,10 +3,13 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
 
 int main(void)
 {
     char input[100];
+
+    signal(SIGINT, SIG_IGN);
 
     while (1)
     {
@@ -48,11 +51,6 @@ int main(void)
         {
             background = 1;
             args[i - 1] = NULL;
-        }
-
-        if (background)
-        {
-            printf("Background command detected\n");
         }
 
         char **pipe_args = NULL;
@@ -163,6 +161,8 @@ int main(void)
                 close(pipefd[0]);
                 close(pipefd[1]);
 
+                signal(SIGINT, SIG_DFL);
+
                 execvp(args[0], args);
 
                 perror("execvp");
@@ -193,6 +193,8 @@ int main(void)
                 close(pipefd[0]);
                 close(pipefd[1]);
 
+                signal(SIGINT, SIG_DFL);
+
                 execvp(pipe_args[0], pipe_args);
 
                 perror("execvp");
@@ -202,8 +204,17 @@ int main(void)
             close(pipefd[0]);
             close(pipefd[1]);
 
-            wait(NULL);
-            wait(NULL);
+            int left_status;
+            int right_status;
+
+            waitpid(left_pid, &left_status, 0);
+            waitpid(right_pid, &right_status, 0);
+
+            if ((WIFSIGNALED(left_status) && WTERMSIG(left_status) == SIGINT) ||
+                (WIFSIGNALED(right_status) && WTERMSIG(right_status) == SIGINT))
+            {
+                printf("\n");
+            }
 
             continue;
         }
@@ -254,6 +265,8 @@ int main(void)
                 close(fd);
             }
 
+            signal(SIGINT, SIG_DFL);
+
             execvp(args[0], args);
 
             perror("execvp");
@@ -263,9 +276,15 @@ int main(void)
         {
             if (!background)
             {
-                if (wait(NULL) == -1)
+                int status;
+
+                if (wait(&status) == -1)
                 {
                     perror("wait");
+                }
+                else if (WIFSIGNALED(status) && WTERMSIG(status) == SIGINT)
+                {
+                    printf("\n");
                 }
             }
             
