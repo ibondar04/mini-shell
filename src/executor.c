@@ -176,3 +176,102 @@ void execute_pipe(char *args[], char *pipe_args[])
         printf("\n");
     }
 }
+
+
+
+void execute_pipeline(char ***commands, int command_count)
+{
+    int pipefds[command_count - 1][2];
+
+    for (int i = 0; i < command_count - 1; i++)
+    {
+        if (pipe(pipefds[i]) == -1)
+        {
+            perror("pipe");
+            return;
+        }
+    }
+
+    pid_t pids[command_count];
+
+    for (int i = 0; i < command_count; i++)
+    {
+        pid_t pid = fork();
+
+        if (pid < 0)
+        {
+            perror("fork");
+
+            for (int j = 0; j < command_count - 1; j++)
+            {
+                close(pipefds[j][0]);
+                close(pipefds[j][1]);
+            }
+
+            return;
+        }
+
+        pids[i] = pid;
+
+        if (pid == 0)
+        {
+            if (i > 0)
+            {
+                if (dup2(pipefds[i - 1][0], STDIN_FILENO) == -1)
+                {
+                    perror("dup2");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            if (i < command_count - 1)
+            {
+                if (dup2(pipefds[i][1], STDOUT_FILENO) == -1)
+                {
+                    perror("dup2");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            for (int j = 0; j < command_count - 1; j++)
+            {
+                close(pipefds[j][0]);
+                close(pipefds[j][1]);
+            }
+
+            signal(SIGINT, SIG_DFL);
+
+            execvp(commands[i][0], commands[i]);
+
+            perror("execvp");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    for (int i = 0; i < command_count - 1; i++)
+    {
+        close(pipefds[i][0]);
+        close(pipefds[i][1]);
+    }
+
+    int interrupted = 0;
+
+    for (int i = 0; i < command_count; i++)
+    {
+        int status;
+
+        if (waitpid(pids[i], &status, 0) == -1)
+        {
+            perror("waitpid");
+        }
+        else if (WIFSIGNALED(status) && WTERMSIG(status) == SIGINT)
+        {
+            interrupted = 1;
+        }
+    }
+
+    if (interrupted)
+    {
+        printf("\n");
+    }
+}

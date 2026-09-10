@@ -4,7 +4,7 @@
 
 void execute_command(char *args[], char *input_file, char *output_file, int background);
 
-void execute_pipe(char *args[], char *pipe_args[]);
+void execute_pipeline(char ***commands, int command_count);
 
 
 #endif

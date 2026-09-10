@@ -40,16 +40,38 @@ int main(void)
 
         int background = check_background(args, i);
 
-        char **pipe_args = NULL;
+        char **commands[10];
+        int command_count = 1;
+        
+        commands[0] = args;
 
-        for (int j = 0; j < i && args[j] != NULL; j++)
+        for (int j = 0; j < i; j++)
         {
             if (strcmp(args[j], "|") == 0)
             {
+                if (j == 0 || args[j - 1] == NULL)
+                {
+                    printf("myshell: missing command before pipe\n");
+                    command_count = 0;
+                    break;
+                }
+
+                if (j + 1 >= i || args[j + 1] == NULL)
+                {
+                    printf("myshell: missing command after pipe\n");
+                    command_count = 0;
+                    break;
+                }
+
                 args[j] = NULL;
-                pipe_args = &args[j + 1];
-                break;
+                commands[command_count] = &args[j + 1];
+                command_count++; 
             }
+        }
+
+        if (command_count == 0)
+        {
+            continue;
         }
 
         char *output_file = NULL;
@@ -72,9 +94,9 @@ int main(void)
             continue;
         }
 
-        if (pipe_args != NULL)
+        if (command_count > 1)
         {
-            execute_pipe(args, pipe_args);
+            execute_pipeline(commands, command_count);
             continue;
         }
 
