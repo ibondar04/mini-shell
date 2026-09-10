@@ -1,2 +1,6 @@
 myshell
 *.o
+
+input.txt
+output.txt
+output2.txt
