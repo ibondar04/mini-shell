@@ -86,7 +86,7 @@ void execute_command(char *args[], char *input_file, char *output_file, int back
 
 
 
-void execute_pipeline(char ***commands, int command_count, char *input_files[], char *output_files[])
+void execute_pipeline(char ***commands, int command_count, char *input_files[], char *output_files[], int background)
 {
     int pipefds[command_count - 1][2];
 
@@ -201,24 +201,27 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
         close(pipefds[i][1]);
     }
 
-    int interrupted = 0;
-
-    for (int i = 0; i < command_count; i++)
+    if (!background)
     {
-        int status;
+        int interrupted = 0;
 
-        if (waitpid(pids[i], &status, 0) == -1)
+        for (int i = 0; i < command_count; i++)
         {
-            perror("waitpid");
-        }
-        else if (WIFSIGNALED(status) && WTERMSIG(status) == SIGINT)
-        {
-            interrupted = 1;
-        }
-    }
+            int status;
 
-    if (interrupted)
-    {
-        printf("\n");
+            if (waitpid(pids[i], &status, 0) == -1)
+            {
+                perror("waitpid");
+            }
+            else if (WIFSIGNALED(status) && WTERMSIG(status) == SIGINT)
+            {
+                interrupted = 1;
+            }
+        }
+
+        if (interrupted)
+        {
+            printf("\n");
+        }
     }
 }

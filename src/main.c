@@ -45,6 +45,11 @@ int main(void)
 
         int background = check_background(args, i);
 
+        if (background)
+        {
+            i--;
+        }
+
         char **commands[10];
         int command_count = 1;
         
@@ -119,7 +124,7 @@ int main(void)
 
         if (command_count > 1)
         {
-            execute_pipeline(commands, command_count, input_files, output_files);
+            execute_pipeline(commands, command_count, input_files, output_files, background);
             continue;
         }
 
