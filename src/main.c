@@ -33,6 +33,11 @@ int main(void)
         
         int i = parse_input(input, args);
 
+        if (i == -1)
+        {
+            continue;
+        }
+
         if (args[0] == NULL)
         {
             continue;

@@ -9,6 +9,7 @@ int parse_input(char *input, char *args[])
 {
     int argc = 0;
     char *p = input;
+    char quote = '\0';
     
     while (*p != '\0' && argc < MAX_ARGS - 1)
     {
@@ -22,40 +23,55 @@ int parse_input(char *input, char *args[])
             break;
         }
 
-        if (*p == '"')
+        args[argc] = p;
+        argc++;
+
+        char *write = p;
+        quote = '\0';
+
+        while (*p != '\0')
+        {
+            if (quote == '\0')
+            {
+                if (*p == ' ')
+                {
+                    break;
+                }
+
+                if (*p == '"' || *p == '\'')
+                {
+                    quote = *p;
+                    p++;
+                    continue;
+                }
+            }
+            else
+            {
+                if (*p == quote)
+                {
+                    quote = '\0';
+                    p++;
+                    continue;
+                }
+            }
+
+            *write = *p;
+            write++;
+            p++;
+        }
+
+        if (quote != '\0')
+        {
+            printf("myshell: unmatched quote\n");
+            return -1;
+        }
+
+        if (*p == ' ')
         {
             p++;
-
-            args[argc] = p;
-            argc++;
-
-            while (*p != '\0' && *p != '"')
-            {
-                p++;
-            }
-
-            if (*p == '"')
-            {
-                *p = '\0';
-                p++;
-            }
         }
-        else
-        {
-            args[argc] = p;
-            argc++;
 
-            while (*p != '\0' && *p != ' ')
-            {
-                p++;
-            }
-
-            if (*p == ' ')
-            {
-                *p = '\0';
-                p++;
-            }
-        }
+        *write = '\0';
     }
 
     args[argc] = NULL;
