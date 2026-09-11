@@ -29,7 +29,7 @@ int main(void)
 
         input[strcspn(input, "\n")] = '\0';
 
-        char *args[10];
+        char *args[100];
         
         int i = parse_input(input, args);
 
@@ -74,13 +74,31 @@ int main(void)
             continue;
         }
 
-        char *output_file = NULL;
-        char *input_file = NULL;
+        char *output_files[10] = {NULL};
+        char *input_files[10] = {NULL};
 
-        if (parse_redirection(args, i, &input_file, &output_file) == -1)
+        for (int j = 0; j < command_count; j++)
+        {
+            int arg_count = 0;
+
+            while (commands[j][arg_count] != NULL)
+            {
+                arg_count++;
+            }
+            
+            if (parse_redirection(commands[j], arg_count, &input_files[j], &output_files[j]) == -1)
+            {
+                command_count = 0;
+                break;
+            }
+        }
+
+        if (command_count == 0)
         {
             continue;
         }
+
+        
 
         int builtin_result = handle_builtin(args);
 
@@ -96,11 +114,11 @@ int main(void)
 
         if (command_count > 1)
         {
-            execute_pipeline(commands, command_count);
+            execute_pipeline(commands, command_count, input_files, output_files);
             continue;
         }
 
-        execute_command(args, input_file, output_file, background);
+        execute_command(args, input_files[0], output_files[0], background);
     }
     
     return 0;

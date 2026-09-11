@@ -11,7 +11,7 @@ int parse_input(char *input, char *args[])
     
     char *token = strtok(input, " ");
     
-    while (token != NULL && i < 9)
+    while (token != NULL && i < 99)
     {
         args[i] = token;
         i++;
