@@ -29,7 +29,7 @@ int main(void)
 
         input[strcspn(input, "\n")] = '\0';
 
-        char *args[100];
+        char *args[MAX_ARGS];
         
         int i = parse_input(input, args);
 

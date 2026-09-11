@@ -7,20 +7,59 @@
 
 int parse_input(char *input, char *args[])
 {
-    int i = 0;
+    int argc = 0;
+    char *p = input;
     
-    char *token = strtok(input, " ");
-    
-    while (token != NULL && i < 99)
+    while (*p != '\0' && argc < MAX_ARGS - 1)
     {
-        args[i] = token;
-        i++;
-        token = strtok(NULL, " ");
+        while (*p == ' ')
+        {
+            p++;
+        }
+
+        if (*p == '\0')
+        {
+            break;
+        }
+
+        if (*p == '"')
+        {
+            p++;
+
+            args[argc] = p;
+            argc++;
+
+            while (*p != '\0' && *p != '"')
+            {
+                p++;
+            }
+
+            if (*p == '"')
+            {
+                *p = '\0';
+                p++;
+            }
+        }
+        else
+        {
+            args[argc] = p;
+            argc++;
+
+            while (*p != '\0' && *p != ' ')
+            {
+                p++;
+            }
+
+            if (*p == ' ')
+            {
+                *p = '\0';
+                p++;
+            }
+        }
     }
 
-    args[i] = NULL;
-
-    return i;
+    args[argc] = NULL;
+    return argc;
 }
 
 
