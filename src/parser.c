@@ -31,6 +31,22 @@ int parse_input(char *input, char *args[])
 
         while (*p != '\0')
         {
+            if (*p == '\\' && *(p + 1) != '\0')
+            {
+                char next = *(p + 1);
+
+                if (next == '"' || next == '\'' || next == '\\' || next == ' ')
+                {
+                    p++;
+
+                    *write = *p;
+                    write++;
+                    p++;
+
+                    continue;
+                }
+            }
+
             if (quote == '\0')
             {
                 if (*p == ' ')
