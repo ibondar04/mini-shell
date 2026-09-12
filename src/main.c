@@ -2,6 +2,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "parser.h"
 #include "builtins.h"
@@ -24,7 +25,17 @@ int main(void)
             printf("[background finished] %d\n", finished_pid);
         }
 
-        printf("myshell>\n");
+        char cwd[1024];
+
+        if (getcwd(cwd, sizeof(cwd)) != NULL)
+        {
+            printf("myshell:%s$ ", cwd);
+        }
+        else
+        {
+            printf("myshell$ ");
+        }
+        
         if (fgets(input, sizeof(input), stdin) == NULL)
         {
             break;
