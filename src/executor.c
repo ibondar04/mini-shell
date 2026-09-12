@@ -69,6 +69,11 @@ void execute_command(char *args[], char *input_file, char *output_file, int back
         exit(EXIT_FAILURE);
     }
 
+    if (background)
+    {
+        printf("[background] %d\n", pid);
+    }
+
     if (!background)
     {
         int status;
@@ -199,6 +204,18 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
     {
         close(pipefds[i][0]);
         close(pipefds[i][1]);
+    }
+
+    if (background)
+    {
+        printf("[background]");
+
+        for (int i = 0; i < command_count; i++)
+        {
+            printf(" %d", pids[i]);
+        }
+
+        printf("\n");
     }
 
     if (!background)

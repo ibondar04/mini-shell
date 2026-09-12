@@ -17,8 +17,11 @@ int main(void)
 
     while (1)
     {
-        while (waitpid(-1, NULL, WNOHANG) > 0)
+        pid_t finished_pid;
+
+        while ((finished_pid = waitpid(-1, NULL, WNOHANG)) > 0)
         {
+            printf("[background finished] %d\n", finished_pid);
         }
 
         printf("myshell>\n");
