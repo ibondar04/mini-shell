@@ -1,8 +1,10 @@
 CC = gcc
 
-CFLAGS = -Iinclude
+CFLAGS = -Wall -Wextra -Iinclude
 
 SRC = src/main.c src/parser.c src/builtins.c src/executor.c
+
+.PHONY: all clean
 
 all: myshell
 

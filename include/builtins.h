@@ -2,7 +2,14 @@
 #define BUILTINS_H
 
 
-int handle_builtin(char *args[]);
+typedef enum
+{
+    BUILTIN_NOT_FOUND,
+    BUILTIN_HANDLED,
+    BUILTIN_EXIT
+} BuiltinResult;
+
+BuiltinResult handle_builtin(char *args[]);
 
 
 #endif

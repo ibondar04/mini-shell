@@ -14,17 +14,22 @@ int main(void)
 {
     char input[100];
 
+    // keep Ctrl+C from terminating the shell itself.
+    // Child processes restore the default SIGINT behavior before execution.
+
     signal(SIGINT, SIG_IGN);
 
     while (1)
     {
         pid_t finished_pid;
 
+        // Reap finished background processes without blocking the shell.
         while ((finished_pid = waitpid(-1, NULL, WNOHANG)) > 0)
         {
             printf("[background finished] %d\n", finished_pid);
         }
 
+        // Display the current working directory as part of the shell prompt.
         char cwd[1024];
 
         if (getcwd(cwd, sizeof(cwd)) != NULL)
@@ -47,6 +52,8 @@ int main(void)
         
         int i = parse_input(input, args);
 
+        // A negative result means the parser found invalid input,
+        // such as an unmatched quote.
         if (i == -1)
         {
             continue;
@@ -57,6 +64,8 @@ int main(void)
             continue;
         }
 
+        // Remove a trailing '&' and remember whether the command
+        // should run in the background.
         int background = check_background(args, i);
 
         if (background)
@@ -64,11 +73,16 @@ int main(void)
             i--;
         }
 
-        char **commands[10];
+        // Each element points to the beginning of one command
+        // in a pipeline.
+        char **commands[MAX_COMMANDS];
         int command_count = 1;
         
         commands[0] = args;
 
+        // Split the argument array at each pipe.
+        // Replacing "|" with NULL creates separate argv arrays
+        // that can later be passed directly to execvp().
         for (int j = 0; j < i; j++)
         {
             if (strcmp(args[j], "|") == 0)
@@ -87,6 +101,13 @@ int main(void)
                     break;
                 }
 
+                if (command_count >= MAX_COMMANDS)
+                {
+                    printf("myshell: too many commands in pipeline\n");
+                    command_count = 0;
+                    break;
+                }
+
                 args[j] = NULL;
                 commands[command_count] = &args[j + 1];
                 command_count++; 
@@ -98,8 +119,10 @@ int main(void)
             continue;
         }
 
-        char *output_files[10] = {NULL};
-        char *input_files[10] = {NULL};
+        // Store redirection information separately for each
+        // command in the pipeline.
+        char *output_files[MAX_COMMANDS] = {NULL};
+        char *input_files[MAX_COMMANDS] = {NULL};
 
         for (int j = 0; j < command_count; j++)
         {
@@ -110,6 +133,8 @@ int main(void)
                 arg_count++;
             }
             
+            // parse_redirection removes < and > tokens from the
+            // command and stores the associated filenames.
             if (parse_redirection(commands[j], arg_count, &input_files[j], &output_files[j]) == -1)
             {
                 command_count = 0;
@@ -122,16 +147,15 @@ int main(void)
             continue;
         }
 
-        
+        // Built-ins must be handled by the shell process itself.
+        BuiltinResult  builtin_result = handle_builtin(args);
 
-        int builtin_result = handle_builtin(args);
-
-        if (builtin_result == 2)
+        if (builtin_result == BUILTIN_EXIT)
         {
             break;
         }
 
-        if (builtin_result == 1)
+        if (builtin_result == BUILTIN_HANDLED)
         {
             continue;
         }

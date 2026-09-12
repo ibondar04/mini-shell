@@ -21,6 +21,7 @@ void execute_command(char *args[], char *input_file, char *output_file, int back
 
     if (pid == 0)
     {
+        // Apply output redirection before executing the command.
         if (output_file != NULL)
         {
             int fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -41,6 +42,7 @@ void execute_command(char *args[], char *input_file, char *output_file, int back
             close(fd);
         }
 
+        // Apply input redirection before executing the command.
         if (input_file != NULL)
         {
             int fd = open(input_file, O_RDONLY);
@@ -61,10 +63,13 @@ void execute_command(char *args[], char *input_file, char *output_file, int back
             close(fd);
         }
 
+        // The shell ignores Ctrl+C, but foreground commands should not.
         signal(SIGINT, SIG_DFL);
 
+        // Replace the child process with the requested program.
         execvp(args[0], args);
 
+        // execvp() only returns if execution fails.
         perror("execvp");
         exit(EXIT_FAILURE);
     }
@@ -74,6 +79,7 @@ void execute_command(char *args[], char *input_file, char *output_file, int back
         printf("[background] %d\n", pid);
     }
 
+    // Foreground commands block the shell until they finish.
     if (!background)
     {
         int status;
@@ -93,6 +99,7 @@ void execute_command(char *args[], char *input_file, char *output_file, int back
 
 void execute_pipeline(char ***commands, int command_count, char *input_files[], char *output_files[], int background)
 {
+    // A pipeline with N commands requires N - 1 pipes.
     int pipefds[command_count - 1][2];
 
     for (int i = 0; i < command_count - 1; i++)
@@ -100,10 +107,19 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
         if (pipe(pipefds[i]) == -1)
         {
             perror("pipe");
+
+            // Close any pipes that were successfully created earlier.
+            for (int j = 0; j < i; j++)
+            {
+                close(pipefds[j][0]);
+                close(pipefds[j][1]);
+            }
+            
             return;
         }
     }
 
+    // Store each child's PID so the parent can wait for them later.
     pid_t pids[command_count];
 
     for (int i = 0; i < command_count; i++)
@@ -114,10 +130,17 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
         {
             perror("fork");
 
+            // Close all pipe descriptors in the parent.
             for (int j = 0; j < command_count - 1; j++)
             {
                 close(pipefds[j][0]);
                 close(pipefds[j][1]);
+            }
+
+            // Wait for any children that were already created.
+            for (int j = 0; j < i; j++)
+            {
+                waitpid(pids[j], NULL, 0);
             }
 
             return;
@@ -127,6 +150,7 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
 
         if (pid == 0)
         {
+            // Every command except the first reads from the previous pipe.
             if (i > 0)
             {
                 if (dup2(pipefds[i - 1][0], STDIN_FILENO) == -1)
@@ -136,6 +160,7 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
                 }
             }
 
+            // Every command except the last writes to the next pipe.
             if (i < command_count - 1)
             {
                 if (dup2(pipefds[i][1], STDOUT_FILENO) == -1)
@@ -145,6 +170,7 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
                 }
             }
 
+            // Explicit input redirection overrides input from a pipe.
             if (input_files[i] != NULL)
             {
                 int fd = open(input_files[i], O_RDONLY);
@@ -165,6 +191,7 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
                 close(fd);
             }
 
+            // Explicit output redirection overrides output to a pipe.
             if (output_files[i] != NULL)
             {
                 int fd = open(output_files[i], O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -185,6 +212,7 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
                 close(fd);
             }
 
+            // After dup2(), the child no longer needs the original pipe descriptors.
             for (int j = 0; j < command_count - 1; j++)
             {
                 close(pipefds[j][0]);
@@ -193,6 +221,7 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
 
             signal(SIGINT, SIG_DFL);
 
+            // Replace this child with its command from the pipeline.
             execvp(commands[i][0], commands[i]);
 
             perror("execvp");
@@ -200,6 +229,8 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
         }
     }
 
+    // The parent does not read from or write to the pipes.
+    // Leaving these open could prevent commands from receiving EOF.
     for (int i = 0; i < command_count - 1; i++)
     {
         close(pipefds[i][0]);
@@ -222,6 +253,7 @@ void execute_pipeline(char ***commands, int command_count, char *input_files[], 
     {
         int interrupted = 0;
 
+        // Wait for every command in the foreground pipeline.
         for (int i = 0; i < command_count; i++)
         {
             int status;

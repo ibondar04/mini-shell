@@ -7,38 +7,43 @@
 
 
 
-int handle_builtin(char * args[])
+BuiltinResult handle_builtin(char *args[])
 {
+    // Signal main() that the shell should terminate.
     if (strcmp(args[0], "exit") == 0)
     {
-        return 2;
+        return BUILTIN_EXIT;
     }
 
     if (strcmp(args[0], "cd") == 0)
     {
+        // static keeps the previous directory between calls,
+        // allowing "cd -" to return to the last directory.
         static char previous_dir[1024] = "";
 
         char old_cwd[1024];
 
+        // Save the current directory before changing it.
         if (getcwd(old_cwd, sizeof(old_cwd)) == NULL)
         {
             perror("cd");
-            return 1;
-
+            return BUILTIN_HANDLED;
         }
 
         char *path = args[1];
 
+        // "cd" with no argument goes to the user's home directory.
         if (path == NULL)
         {
             path = getenv("HOME");
         }
+        // "cd -" switches back to the previous directory.
         else if (strcmp(path, "-") == 0)
         {
             if (previous_dir[0] == '\0')
             {
                 printf("cd: no previous directory\n");
-                return 1;
+                return BUILTIN_HANDLED;
             }
 
             path = previous_dir;
@@ -48,17 +53,18 @@ int handle_builtin(char * args[])
         if (path == NULL)
         {
             printf("cd: HOME not set\n");
-            return 1;
+            return BUILTIN_HANDLED;
         }
 
         if (chdir(path) == -1)
         {
             perror("cd");
-            return 1;
+            return BUILTIN_HANDLED;
         }
 
+        // Only update the previous directory after chdir succeeds.
         strcpy(previous_dir, old_cwd);
-        return 1;
+        return BUILTIN_HANDLED;
     }
 
     if (strcmp(args[0], "pwd") == 0)
@@ -74,8 +80,9 @@ int handle_builtin(char * args[])
             printf("%s\n", cwd);
         }
 
-        return 1;
+        return BUILTIN_HANDLED;
     }
 
-    return 0;
+    // Not a built-in command.
+    return BUILTIN_NOT_FOUND;
 }
