@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "builtins.h"
 
@@ -15,15 +16,48 @@ int handle_builtin(char * args[])
 
     if (strcmp(args[0], "cd") == 0)
     {
-        if (args[1] == NULL)
-        {
-            printf("cd: missing argument\n");
-        }
-        else if (chdir(args[1]) != 0)
+        static char previous_dir[1024] = "";
+
+        char old_cwd[1024];
+
+        if (getcwd(old_cwd, sizeof(old_cwd)) == NULL)
         {
             perror("cd");
+            return 1;
+
         }
 
+        char *path = args[1];
+
+        if (path == NULL)
+        {
+            path = getenv("HOME");
+        }
+        else if (strcmp(path, "-") == 0)
+        {
+            if (previous_dir[0] == '\0')
+            {
+                printf("cd: no previous directory\n");
+                return 1;
+            }
+
+            path = previous_dir;
+            printf("%s\n", path);
+        }
+
+        if (path == NULL)
+        {
+            printf("cd: HOME not set\n");
+            return 1;
+        }
+
+        if (chdir(path) == -1)
+        {
+            perror("cd");
+            return 1;
+        }
+
+        strcpy(previous_dir, old_cwd);
         return 1;
     }
 
